@@ -36,19 +36,23 @@ def update_sentiment():
             if session_id is None:
                 login_myfxbook()
             if session_id:
+                print("📡 Fetching sentiment...")
                 r = requests.get("https://www.myfxbook.com/api/get-community-outlook.json", params={
                     "session": session_id
                 })
                 outlook = r.json()
-                for sym in outlook["symbols"]:
+                print("🔍 Outlook keys:", outlook.keys())
+                for sym in outlook.get("symbols", []):
                     if sym["symbol"] == "XAU/USD":
                         cached_sentiment["long"] = sym["longPercentage"]
                         cached_sentiment["short"] = sym["shortPercentage"]
-                        print("Updated XAUUSD Sentiment:", cached_sentiment)
+                        print("✅ Updated XAUUSD Sentiment:", cached_sentiment)
                         break
+                else:
+                    print("❗ XAU/USD not found in symbols.")
         except Exception as e:
-            print("Update error:", e)
-        time.sleep(300)  # كل 5 دقايق
+            print("💥 Update error:", e)
+        time.sleep(300)
 
 # API endpoint
 @app.route('/sentiment/XAUUSD')
