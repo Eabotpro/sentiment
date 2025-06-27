@@ -1,28 +1,38 @@
+from flask import Flask, jsonify
 import requests
 import threading
 import time
-from flask import Flask, jsonify
 
 app = Flask(__name__)
 
+# تخزين الكاش والـ session
 cached_sentiment = {"symbol": "XAUUSD", "long": None, "short": None}
 session_id = None
+
+# بيانات الدخول إلى Myfxbook
+MYFXBOOK_EMAIL = "wifileb@gmail.com"
+MYFXBOOK_PASSWORD = "Ilovechatgpt0214@"
 
 def login_myfxbook():
     global session_id
     try:
+        print("🔐 Trying to login...")
         r = requests.get("https://www.myfxbook.com/api/login.json", params={
-            "email": "wifileb@gmail.com",
-            "password": "Ilovechatgpt0214@"
+            "email": MYFXBOOK_EMAIL,
+            "password": MYFXBOOK_PASSWORD
         })
-        session_id = r.json().get("session")
-        print("🔐 Logged in with session ID:", session_id)
+        res = r.json()
+        if res["error"] is False:
+            session_id = res["session"]
+            print("✅ Logged in! Session ID:", session_id)
+        else:
+            print("❌ Login failed:", res["message"])
     except Exception as e:
         print("💥 Login error:", e)
-        session_id = None
 
 def update_sentiment():
     global cached_sentiment, session_id
+    print("⚙️ Starting background thread from main")
     while True:
         try:
             if session_id is None:
@@ -33,7 +43,6 @@ def update_sentiment():
                     "session": session_id
                 })
                 outlook = r.json()
-                print("🔍 Outlook keys:", outlook.keys())
                 for sym in outlook.get("symbols", []):
                     if sym["symbol"] == "XAU/USD":
                         cached_sentiment["long"] = sym["longPercentage"]
@@ -41,21 +50,18 @@ def update_sentiment():
                         print("✅ Updated XAUUSD Sentiment:", cached_sentiment)
                         break
                 else:
-                    print("❗ XAU/USD not found in symbols.")
+                    print("❗ XAU/USD not found.")
         except Exception as e:
             print("💥 Update error:", e)
-        time.sleep(300)
+        time.sleep(300)  # كل 5 دقايق
 
-@app.route("/sentiment/<symbol>")
-def get_sentiment(symbol):
-    if symbol.upper() == "XAUUSD":
-        return jsonify(cached_sentiment)
-    return jsonify({"error": "Symbol not found"}), 404
+# نقطة الوصول API
+@app.route("/sentiment/XAUUSD")
+def get_sentiment():
+    return jsonify(cached_sentiment)
 
+# تشغيل الـ background thread
 if __name__ == "__main__":
-    print("⚙️ Starting background thread from main")
-    thread = threading.Thread(target=update_sentiment)
-    thread.daemon = True
-    thread.start()
+    threading.Thread(target=update_sentiment, daemon=True).start()
     print("🔁 Background thread started.")
     app.run(host="0.0.0.0", port=3000)
