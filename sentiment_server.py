@@ -1,22 +1,19 @@
 from flask import Flask, jsonify
-import requests
-import threading
-import time
+import requests, threading, time
 
 app = Flask(__name__)
-
-# تخزين الكاش والـ session
-cached_sentiment = {"symbol": "XAUUSD", "long": None, "short": None}
-session_id = None
 
 # بيانات الدخول إلى Myfxbook
 MYFXBOOK_EMAIL = "wifileb@gmail.com"
 MYFXBOOK_PASSWORD = "Ilovechatgpt0214@"
 
+session_id = None
+cached_sentiment = {"symbol": "XAUUSD", "long": None, "short": None}
+
 def login_myfxbook():
     global session_id
     try:
-        print("🔐 Trying to login...")
+        print("🔐 Trying to login to Myfxbook...")
         r = requests.get("https://www.myfxbook.com/api/login.json", params={
             "email": MYFXBOOK_EMAIL,
             "password": MYFXBOOK_PASSWORD
@@ -28,7 +25,7 @@ def login_myfxbook():
         else:
             print("❌ Login failed:", res["message"])
     except Exception as e:
-        print("💥 Login error:", e)
+        print("💥 Login error:", str(e))
 
 def update_sentiment():
     global cached_sentiment, session_id
@@ -50,17 +47,15 @@ def update_sentiment():
                         print("✅ Updated XAUUSD Sentiment:", cached_sentiment)
                         break
                 else:
-                    print("❗ XAU/USD not found.")
+                    print("❗ XAU/USD not found in symbols.")
         except Exception as e:
-            print("💥 Update error:", e)
-        time.sleep(300)  # كل 5 دقايق
+            print("💥 Update error:", str(e))
+        time.sleep(300)
 
-# نقطة الوصول API
 @app.route("/sentiment/XAUUSD")
 def get_sentiment():
     return jsonify(cached_sentiment)
 
-# تشغيل الـ background thread
 if __name__ == "__main__":
     threading.Thread(target=update_sentiment, daemon=True).start()
     print("🔁 Background thread started.")
