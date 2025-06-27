@@ -2,33 +2,20 @@ from flask import Flask, jsonify
 import requests, threading, time
 
 app = Flask(__name__)
-
 session_id = None
-cached_sentiment = {
-    "symbol": "XAUUSD",
-    "long": None,
-    "short": None
-}
-
-email = "wifileb@gmail.com"
-password = "Ilovechatgpt0214@"
+cached_sentiment = {"symbol": "XAUUSD", "long": None, "short": None}
 
 def login_myfxbook():
     global session_id
-    try:
-        print("🔐 Logging in to Myfxbook...")
-        r = requests.get("https://www.myfxbook.com/api/login.json", params={
-            "email": email,
-            "password": password
-        })
-        data = r.json()
-        if data["error"]:
-            print("❌ Login failed:", data["message"])
-        else:
-            session_id = data["session"]
-            print("✅ Logged in! Session ID:", session_id)
-    except Exception as e:
-        print("💥 Login error:", e)
+    r = requests.post("https://www.myfxbook.com/api/login.json", data={
+        "email": "wifileb@gmail.com",
+        "password": "Ilovechatgpt0214@"
+    })
+    if r.json().get("error"):
+        print("❌ Login failed:", r.json().get("message"))
+        return
+    session_id = r.json().get("session")
+    print("✅ Logged in! Session ID:", session_id)
 
 def update_sentiment():
     global cached_sentiment, session_id
@@ -42,32 +29,24 @@ def update_sentiment():
                     "session": session_id
                 })
                 outlook = r.json()
-                print("🔍 Outlook keys:", outlook.keys())
                 for sym in outlook.get("symbols", []):
-                    if "XAUUSD" in sym["symbol"]:
+                    if sym["symbol"].lower() == "xauusd.sd":
                         cached_sentiment["long"] = sym["longPercentage"]
                         cached_sentiment["short"] = sym["shortPercentage"]
                         print("✅ Updated XAUUSD Sentiment:", cached_sentiment)
                         break
                 else:
-                    print("❗ XAUUSD not found in symbols.")
+                    print("❗ Symbol not found in Myfxbook data.")
         except Exception as e:
             print("💥 Update error:", e)
         time.sleep(300)
 
-@app.route('/sentiment/<symbol>')
-def get_sentiment(symbol):
-    if symbol.upper() == "XAUUSD":
-        return jsonify(cached_sentiment)
-    return jsonify({"error": "Symbol not supported"}), 404
-
-def start_background_thread():
-    print("⚙️ Starting background thread from main")
-    t = threading.Thread(target=update_sentiment)
-    t.daemon = True
-    t.start()
-    print("🔁 Background thread started.")
+@app.route('/sentiment/XAUUSD')
+def get_sentiment():
+    return jsonify(cached_sentiment)
 
 if __name__ == '__main__':
-    start_background_thread()
+    print("⚙️ Starting background thread from main")
+    threading.Thread(target=update_sentiment, daemon=True).start()
+    print("🔁 Background thread started.")
     app.run(host="0.0.0.0", port=3000)
