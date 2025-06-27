@@ -65,7 +65,8 @@ def get_sentiment(symbol):
         return jsonify(cached_sentiment)
     return jsonify({"error": "Symbol not found"}), 404
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+    print("⚙️ Starting background thread from main")
     threading.Thread(target=update_sentiment, daemon=True).start()
     print("🔁 Background thread started.")
-    app.run(host="0.0.0.0", port=3000)
+    app.run(host='0.0.0.0', port=3000)
