@@ -1,45 +1,64 @@
-import requests
 from flask import Flask, jsonify
+import requests, threading, time
 
 app = Flask(__name__)
 
-# حساب Myfxbook
-email = "wifileb@gmail.com"
-password = "Ilovechatgpt0214@"
+# بيانات حساب Myfxbook
+MYFXBOOK_EMAIL = "wifileb@gmail.com"
+MYFXBOOK_PASSWORD = "Ilovechatgpt0214@"
 
-# تسجيل الدخول
-login_url = f"https://www.myfxbook.com/api/login.json?email={email}&password={password}"
-login_response = requests.get(login_url).json()
+# بيانات global
+cached_sentiment = {"symbol": "XAUUSD", "long": None, "short": None}
+session_id = None
 
-# التأكد من الدخول
-if not login_response["error"]:
-    session_id = login_response["session"]
+# دالة تسجيل الدخول إلى Myfxbook
+def login_myfxbook():
+    global session_id
+    try:
+        r = requests.get("https://www.myfxbook.com/api/login.json", params={
+            "email": MYFXBOOK_EMAIL,
+            "password": MYFXBOOK_PASSWORD
+        })
+        data = r.json()
+        if data["error"]:
+            print("Login failed:", data["message"])
+            return None
+        session_id = data["session"]
+        print("Logged in to Myfxbook.")
+    except Exception as e:
+        print("Login error:", e)
 
-    # سحب بيانات المجتمع (Community Outlook)
-    sentiment_url = f"https://www.myfxbook.com/api/get-community-outlook.json?session={session_id}"
-    sentiment_response = requests.get(sentiment_url).json()
+# دالة لتحديث البيانات كل 5 دقائق
+def update_sentiment():
+    global cached_sentiment, session_id
+    while True:
+        try:
+            if session_id is None:
+                login_myfxbook()
+            if session_id:
+                r = requests.get("https://www.myfxbook.com/api/get-community-outlook.json", params={
+                    "session": session_id
+                })
+                outlook = r.json()
+                for sym in outlook["symbols"]:
+                    if sym["symbol"] == "XAU/USD":
+                        cached_sentiment["long"] = sym["longPercentage"]
+                        cached_sentiment["short"] = sym["shortPercentage"]
+                        print("Updated XAUUSD Sentiment:", cached_sentiment)
+                        break
+        except Exception as e:
+            print("Update error:", e)
+        time.sleep(300)  # كل 5 دقايق
 
-    # استخراج نسبة long/short لـ XAUUSD
-    long_pct = None
-    short_pct = None
-
-    for item in sentiment_response["symbols"]:
-        if item["symbol"] == "XAU/USD":
-            long_pct = item["longPercentage"]
-            short_pct = item["shortPercentage"]
-            break
-else:
-    print("❌ فشل تسجيل الدخول:", login_response["message"])
-    long_pct = 0
-    short_pct = 0
-
+# API endpoint
 @app.route('/sentiment/XAUUSD')
 def get_sentiment():
-    return jsonify({
-        "symbol": "XAUUSD",
-        "long": long_pct,
-        "short": short_pct
-    })
+    return jsonify(cached_sentiment)
+
+# تشغيل الـ background updater
+@app.before_first_request
+def start_background_thread():
+    threading.Thread(target=update_sentiment, daemon=True).start()
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=3000)
