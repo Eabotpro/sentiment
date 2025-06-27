@@ -1,0 +1,2 @@
+touch .env
+nano .env
