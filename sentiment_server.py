@@ -33,7 +33,7 @@ def update_sentiment():
                     if sym["symbol"].lower() == "xau/usd":
                         cached_sentiment["long"] = sym["longPercentage"]
                         cached_sentiment["short"] = sym["shortPercentage"]
-                        print("✅ Updated XAUUSD Sentiment:", cached_sentiment)
+                        print("✅ Updated XAU/USD Sentiment:", cached_sentiment)
                         break
                 else:
                     print("❗ Symbol not found in Myfxbook data.")
