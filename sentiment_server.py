@@ -56,9 +56,9 @@ def get_sentiment():
     return jsonify(cached_sentiment)
 
 # تشغيل الـ background updater
-@app.before_first_request
-def start_background_thread():
+if __name__ == '__main__':
     threading.Thread(target=update_sentiment, daemon=True).start()
+    app.run(host="0.0.0.0", port=3000)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=3000)
