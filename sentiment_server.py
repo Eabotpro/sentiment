@@ -32,6 +32,7 @@ def login_myfxbook():
 def update_sentiment():
     global cached_sentiment, session_id
     while True:
+        print("🔁 Background thread started.")
         try:
             if session_id is None:
                 login_myfxbook()
