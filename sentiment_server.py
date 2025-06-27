@@ -62,7 +62,6 @@ def get_sentiment():
 
 # تشغيل الـ background updater
 if __name__ == '__main__':
+    print("⚙️ Starting background thread from main")
     threading.Thread(target=update_sentiment, daemon=True).start()
     app.run(host="0.0.0.0", port=3000)
-
-
