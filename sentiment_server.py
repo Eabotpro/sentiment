@@ -1,38 +1,29 @@
+import requests
+import threading
+import time
 from flask import Flask, jsonify
-import requests, threading, time
 
 app = Flask(__name__)
 
-# بيانات حساب Myfxbook
-MYFXBOOK_EMAIL = "wifileb@gmail.com"
-MYFXBOOK_PASSWORD = "Ilovechatgpt0214@"
-
-# بيانات global
 cached_sentiment = {"symbol": "XAUUSD", "long": None, "short": None}
 session_id = None
 
-# دالة تسجيل الدخول إلى Myfxbook
 def login_myfxbook():
     global session_id
     try:
         r = requests.get("https://www.myfxbook.com/api/login.json", params={
-            "email": MYFXBOOK_EMAIL,
-            "password": MYFXBOOK_PASSWORD
+            "email": "wifileb@gmail.com",
+            "password": "Ilovechatgpt0214@"
         })
-        data = r.json()
-        if data["error"]:
-            print("Login failed:", data["message"])
-            return None
-        session_id = data["session"]
-        print("Logged in to Myfxbook.")
+        session_id = r.json().get("session")
+        print("🔐 Logged in with session ID:", session_id)
     except Exception as e:
-        print("Login error:", e)
+        print("💥 Login error:", e)
+        session_id = None
 
-# دالة لتحديث البيانات كل 5 دقائق
 def update_sentiment():
     global cached_sentiment, session_id
     while True:
-        print("🔁 Background thread started.")
         try:
             if session_id is None:
                 login_myfxbook()
@@ -55,13 +46,16 @@ def update_sentiment():
             print("💥 Update error:", e)
         time.sleep(300)
 
-# API endpoint
-@app.route('/sentiment/XAUUSD')
-def get_sentiment():
-    return jsonify(cached_sentiment)
+@app.route("/sentiment/<symbol>")
+def get_sentiment(symbol):
+    if symbol.upper() == "XAUUSD":
+        return jsonify(cached_sentiment)
+    return jsonify({"error": "Symbol not found"}), 404
 
-# تشغيل الـ background updater
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("⚙️ Starting background thread from main")
-    threading.Thread(target=update_sentiment, daemon=True).start()
+    thread = threading.Thread(target=update_sentiment)
+    thread.daemon = True
+    thread.start()
+    print("🔁 Background thread started.")
     app.run(host="0.0.0.0", port=3000)
