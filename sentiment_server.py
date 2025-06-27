@@ -1,5 +1,5 @@
 from flask import Flask, jsonify
-import requests, threading, time
+import threading, requests, time
 
 app = Flask(__name__)
 
@@ -13,7 +13,7 @@ cached_sentiment = {"symbol": "XAUUSD", "long": None, "short": None}
 def login_myfxbook():
     global session_id
     try:
-        print("🔐 Trying to login to Myfxbook...")
+        print("🔐 Trying to login...")
         r = requests.get("https://www.myfxbook.com/api/login.json", params={
             "email": MYFXBOOK_EMAIL,
             "password": MYFXBOOK_PASSWORD
@@ -25,11 +25,10 @@ def login_myfxbook():
         else:
             print("❌ Login failed:", res["message"])
     except Exception as e:
-        print("💥 Login error:", str(e))
+        print("💥 Login error:", e)
 
 def update_sentiment():
     global cached_sentiment, session_id
-    print("⚙️ Starting background thread from main")
     while True:
         try:
             if session_id is None:
@@ -41,7 +40,7 @@ def update_sentiment():
                 })
                 outlook = r.json()
                 for sym in outlook.get("symbols", []):
-                    if sym["symbol"] == "XAU/USD":
+                    if sym["symbol"] in ["XAU/USD", "XAUUSD", "GOLD"]:
                         cached_sentiment["long"] = sym["longPercentage"]
                         cached_sentiment["short"] = sym["shortPercentage"]
                         print("✅ Updated XAUUSD Sentiment:", cached_sentiment)
@@ -49,14 +48,14 @@ def update_sentiment():
                 else:
                     print("❗ XAU/USD not found in symbols.")
         except Exception as e:
-            print("💥 Update error:", str(e))
+            print("💥 Update error:", e)
         time.sleep(300)
 
-@app.route("/sentiment/XAUUSD")
+@app.route("/sentiment/XAUUSD", methods=["GET"])
 def get_sentiment():
     return jsonify(cached_sentiment)
 
 if __name__ == "__main__":
     threading.Thread(target=update_sentiment, daemon=True).start()
-    print("🔁 Background thread started.")
+    print("⚙️ Starting background thread from main")
     app.run(host="0.0.0.0", port=3000)
