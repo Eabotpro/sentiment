@@ -3,7 +3,7 @@ import requests, threading, time
 
 app = Flask(__name__)
 session_id = None
-cached_sentiment = {"symbol": "XAUUSD", "long": None, "short": None}
+cached_sentiment = {"symbol": "XAU/USD", "long": None, "short": None}
 
 def login_myfxbook():
     global session_id
@@ -30,7 +30,7 @@ def update_sentiment():
                 })
                 outlook = r.json()
                 for sym in outlook.get("symbols", []):
-                    if sym["symbol"].lower() == "xauusd.sd":
+                    if sym["symbol"].lower() == "xau/usd":
                         cached_sentiment["long"] = sym["longPercentage"]
                         cached_sentiment["short"] = sym["shortPercentage"]
                         print("✅ Updated XAUUSD Sentiment:", cached_sentiment)
@@ -41,7 +41,7 @@ def update_sentiment():
             print("💥 Update error:", e)
         time.sleep(300)
 
-@app.route('/sentiment/XAUUSD')
+@app.route('/sentiment/XAU/USD')
 def get_sentiment():
     return jsonify(cached_sentiment)
 
